@@ -446,6 +446,33 @@ first-level entry for writing comments."
         (replace-match (save-match-data (url-expand-file-name (match-string 1) url))
                        nil t nil 1)))
 
+    (require 'dom)
+    (goto-char (point-min))
+    (while (re-search-forward (rx "<a" (+ (not ">")) (group-n 1 ">")
+                                  (group-n 2 (*? nonl))
+                                  (group-n 3 "</a>"))
+                              nil t)
+      (when (or (string-empty-p (match-string 2))
+                (string-match-p "<img.*?>" (match-string 2)))
+        
+        (when (string-match-p "<img.*?>" (match-string 2))
+          (delete-region (match-beginning 3) (match-end 3)))
+
+        (goto-char (match-end 1))
+        (let* ((a-dom (dom-child-by-tag
+                       (dom-children
+                        (libxml-parse-html-region
+                         (match-beginning 0)
+                         (match-end 0)))
+                       'a))
+               (img-dom (dom-child-by-tag a-dom 'img)))
+          (insert (or (dom-attr a-dom 'title)
+                      (dom-attr a-dom 'alt)
+                      (dom-attr img-dom 'title)
+                      (dom-attr img-dom 'alt)
+                      (dom-attr a-dom 'href)))
+          (when (string-match "<img.*?>" (match-string 2))
+            (insert "</a>")))))
     (buffer-string)))
 ;;;;; Misc
 
