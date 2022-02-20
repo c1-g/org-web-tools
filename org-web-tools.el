@@ -448,34 +448,36 @@ first-level entry for writing comments."
 
     (require 'dom)
     (goto-char (point-min))
-    (while (re-search-forward (rx "<a" (+ (not ">")) (group-n 1 ">")
-                                  (group-n 2 (*? nonl))
-                                  (group-n 3 "</a>"))
-                              nil t)
-      (when (or (string-empty-p (match-string 2))
-                (string-match-p "<img.*?>" (match-string 2)))
-        
-        (when (string-match-p "<img.*?>" (match-string 2))
-          (delete-region (match-beginning 3) (match-end 3)))
+    (let (has-img-p)
+      (while (re-search-forward (rx "<a" (+ (not ">")) (group-n 1 ">")
+                                    (group-n 2 (*? nonl))
+                                    (group-n 3 "</a>"))
+                                nil t)
+        (when (or (string-empty-p (match-string 2))
+                  (string-match-p "<img.*?>" (match-string 2)))
 
-        (goto-char (match-end 1))
-        (let* ((a-dom (dom-child-by-tag
-                       (dom-children
-                        (libxml-parse-html-region
-                         (match-beginning 0)
-                         (match-end 0)))
-                       'a))
-               (img-dom (dom-child-by-tag a-dom 'img)))
-          (cl-labels ((nil-when-empty (string)
-                                      (unless (string-empty-p string)
-                                        string)))
-            (insert (or (nil-when-empty (dom-attr a-dom 'title))
-                        (nil-when-empty (dom-attr a-dom 'alt))
-                        (nil-when-empty (dom-attr img-dom 'title))
-                        (nil-when-empty (dom-attr img-dom 'alt))
-                        (nil-when-empty (dom-attr a-dom 'href)))))
-          (when (string-match "<img.*?>" (match-string 2))
-            (insert "</a>")))))
+          (when (setq has-img-p (string-match-p "<img.*?>" (match-string 2)))
+            (delete-region (match-beginning 3) (match-end 3)))
+
+          (goto-char (match-end 1))
+          (let* ((a-dom (dom-child-by-tag
+                         (dom-children
+                          (libxml-parse-html-region
+                           (match-beginning 0)
+                           (match-end 0)))
+                         'a))
+                 (img-dom (dom-child-by-tag a-dom 'img)))
+            (cl-labels ((nil-when-empty (string)
+                                        (unless (string-empty-p string)
+                                          string)))
+              (insert (or (nil-when-empty (dom-attr a-dom 'title))
+                          (nil-when-empty (dom-attr a-dom 'alt))
+                          (nil-when-empty (dom-attr img-dom 'title))
+                          (nil-when-empty (dom-attr img-dom 'alt))
+                          (nil-when-empty (dom-attr a-dom 'href))
+                          "")))
+            (when has-img-p
+              (insert "</a>"))))))
     (buffer-string)))
 ;;;;; Misc
 
